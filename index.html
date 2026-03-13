@@ -814,9 +814,9 @@ function renderPoints() {
     });
     item.append(num, textarea, delBtn);
     list.appendChild(item);
-    autoResize(textarea);
   });
   container.appendChild(list);
+  container.querySelectorAll('.point-text').forEach(t => autoResize(t));
 
   const addBtn = el('button', 'add-btn', { textContent: '+ 論点を追加' });
   addBtn.style.marginTop = '4px';
