@@ -641,8 +641,8 @@
         <div class="step-num">2</div>
         <div class="step-label">Step 2</div>
       </div>
-      <div class="column-title">会議のゴール</div>
-      <div class="column-subtitle">何を持ち帰るかを決める</div>
+      <div class="column-title">会議の前提整理</div>
+      <div class="column-subtitle">ゴール・背景・現状・課題を整理する</div>
     </div>
     <div class="column-body" id="goalBody"></div>
   </div>
@@ -695,6 +695,9 @@
 const state = {
   meetingType: null,
   goal: '',
+  background: '',
+  currentStatus: '',
+  issue: '',
   points: [],
   discussions: {},
   assignees: []
@@ -708,7 +711,12 @@ const meetingTypes = [
   { id: 'consensus', label: '合意形成型', sub: 'Consensus Building' }
 ];
 
-const goalChips = ['方針を決める', '検証項目を決める', '次のアクションを決める', '担当を割り振る', 'スケジュールを合意する'];
+const goalFields = [
+  { key: 'goal', label: 'ゴール（今日決めたいこと）', placeholder: '例: 検証項目の優先順位を決定する', color: 'var(--step-2)' },
+  { key: 'background', label: '背景', placeholder: '例: PoC実施中', color: 'var(--step-2)' },
+  { key: 'currentStatus', label: '現状', placeholder: '例: 検証項目が増えた', color: 'var(--step-2)' },
+  { key: 'issue', label: '課題', placeholder: '例: 残り期間が短い', color: 'var(--step-2)' }
+];
 const avatarColors = ['#f59e0b', '#fb923c', '#f472b6', '#a78bfa', '#34d399', '#60a5fa', '#f87171', '#facc15'];
 
 let pointCounter = 0;
@@ -757,33 +765,28 @@ function renderGoal() {
   const container = document.getElementById('goalBody');
   container.replaceChildren();
 
-  const textarea = el('textarea', 'goal-textarea', { placeholder: '例: 検証項目の優先順位を決定する' });
-  textarea.value = state.goal;
-  textarea.addEventListener('input', () => {
-    state.goal = textarea.value;
-    autoResize(textarea);
-    updateProgress();
-    saveState();
-  });
-  container.appendChild(textarea);
-  autoResize(textarea);
+  goalFields.forEach(field => {
+    const section = el('div', 'discussion-section');
 
-  const examples = el('div', 'goal-examples');
-  const label = el('div', 'goal-example-label', { textContent: 'Quick Select' });
-  examples.appendChild(label);
+    const label = el('div', 'discussion-point-label');
+    const dot = el('span', 'dot');
+    dot.style.background = field.color;
+    label.append(dot, document.createTextNode(field.label));
 
-  goalChips.forEach(text => {
-    const chip = el('span', 'goal-chip', { textContent: text });
-    chip.addEventListener('click', () => {
-      state.goal = text;
-      textarea.value = text;
+    const textarea = el('textarea', 'goal-textarea', { placeholder: field.placeholder });
+    textarea.style.minHeight = field.key === 'goal' ? '80px' : '60px';
+    textarea.value = state[field.key] || '';
+    textarea.addEventListener('input', () => {
+      state[field.key] = textarea.value;
       autoResize(textarea);
       updateProgress();
       saveState();
     });
-    examples.appendChild(chip);
+
+    section.append(label, textarea);
+    container.appendChild(section);
+    autoResize(textarea);
   });
-  container.appendChild(examples);
 }
 
 // --- Render: Points ---
@@ -993,7 +996,8 @@ function doAddAssignee(input) {
 // --- Progress ---
 function updateProgress() {
   document.getElementById('prog1').style.width = state.meetingType ? '100%' : '0%';
-  document.getElementById('prog2').style.width = state.goal.trim() ? '100%' : '0%';
+  const goalFilled = goalFields.filter(f => (state[f.key] || '').trim()).length;
+  document.getElementById('prog2').style.width = (goalFilled / goalFields.length * 100) + '%';
 
   const filledPoints = state.points.filter(p => p.text.trim()).length;
   const pointsPct = state.points.length > 0 ? (filledPoints / state.points.length * 100) : 0;
@@ -1014,7 +1018,10 @@ function exportBoard() {
   const type = meetingTypes.find(t => t.id === state.meetingType);
   let md = '# 会議設計ボード\n\n';
   md += '## 会議の種類\n' + (type ? type.label + ' (' + type.sub + ')' : '未選択') + '\n\n';
-  md += '## 会議のゴール\n' + (state.goal || '未入力') + '\n\n';
+  md += '## ゴール（今日決めたいこと）\n' + (state.goal || '未入力') + '\n\n';
+  md += '## 背景\n' + (state.background || '未入力') + '\n\n';
+  md += '## 現状\n' + (state.currentStatus || '未入力') + '\n\n';
+  md += '## 課題\n' + (state.issue || '未入力') + '\n\n';
   md += '## 論点\n';
   state.points.forEach((p, i) => { md += (i + 1) + '. ' + (p.text || '(空)') + '\n'; });
   md += '\n## 議論\n';
@@ -1042,6 +1049,9 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   if (!confirm('すべての内容をリセットしますか？')) return;
   state.meetingType = null;
   state.goal = '';
+  state.background = '';
+  state.currentStatus = '';
+  state.issue = '';
   state.points = [];
   state.discussions = {};
   state.assignees = [];
@@ -1064,6 +1074,9 @@ function loadState() {
     const s = JSON.parse(saved);
     state.meetingType = s.meetingType;
     state.goal = s.goal || '';
+    state.background = s.background || '';
+    state.currentStatus = s.currentStatus || '';
+    state.issue = s.issue || '';
     state.points = s.points || [];
     state.discussions = s.discussions || {};
     state.assignees = s.assignees || [];
