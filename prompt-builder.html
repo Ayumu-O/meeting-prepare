@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>プロンプト設計ボード</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #101113;
+    --panel: #181a1f;
+    --panel-2: #20232a;
+    --line: #30343d;
+    --line-strong: #464b57;
+    --text: #eceff3;
+    --muted: #969da9;
+    --dim: #626a76;
+    --blue: #60a5fa;
+    --green: #34d399;
+    --amber: #f59e0b;
+    --pink: #f472b6;
+    --violet: #a78bfa;
+    --danger: #fb7185;
+    --radius: 8px;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Noto Sans JP', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+  }
+
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 28px 14px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(16, 17, 19, 0.94);
+    backdrop-filter: blur(12px);
+  }
+
+  .title-block { min-width: 0; }
+
+  .title {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .subtitle {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .header-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  button {
+    font-family: var(--sans);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--panel-2);
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.2s;
+  }
+
+  button:hover {
+    border-color: var(--line-strong);
+    background: #262a32;
+  }
+
+  button:active { transform: translateY(1px); }
+
+  .btn {
+    min-height: 34px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .btn.primary {
+    background: var(--green);
+    border-color: var(--green);
+    color: #07110d;
+  }
+
+  .btn.warn {
+    color: var(--danger);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 430px;
+    min-height: calc(100vh - 69px);
+  }
+
+  .builder {
+    padding: 24px;
+    border-right: 1px solid var(--line);
+  }
+
+  .section-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  .field-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    overflow: hidden;
+  }
+
+  .field-card.priority { border-color: rgba(96, 165, 250, 0.45); }
+  .field-card.output { border-color: rgba(52, 211, 153, 0.45); }
+
+  .field-head {
+    min-height: 54px;
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .num {
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border-radius: 6px;
+    color: #0d1014;
+    font: 500 11px var(--mono);
+  }
+
+  .field-card:nth-child(5n+1) .num { background: var(--blue); }
+  .field-card:nth-child(5n+2) .num { background: var(--amber); }
+  .field-card:nth-child(5n+3) .num { background: var(--pink); }
+  .field-card:nth-child(5n+4) .num { background: var(--violet); }
+  .field-card:nth-child(5n+5) .num { background: var(--green); }
+
+  .field-title {
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .field-note {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .badge {
+    color: var(--dim);
+    font: 500 10px var(--mono);
+    text-transform: uppercase;
+  }
+
+  textarea, select {
+    width: 100%;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--sans);
+  }
+
+  textarea {
+    min-height: 116px;
+    padding: 13px 14px 16px;
+    resize: vertical;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  textarea::placeholder { color: #555d69; }
+
+  .compact textarea { min-height: 88px; }
+
+  .output-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 12px 14px 14px;
+  }
+
+  .option {
+    position: relative;
+  }
+
+  .option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .option span {
+    min-height: 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--panel-2);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .option input:checked + span {
+    border-color: var(--green);
+    color: var(--text);
+    background: rgba(52, 211, 153, 0.11);
+  }
+
+  .preview {
+    position: sticky;
+    top: 69px;
+    height: calc(100vh - 69px);
+    display: flex;
+    flex-direction: column;
+    background: #131519;
+  }
+
+  .score-panel {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .score-ring {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background:
+      conic-gradient(var(--green) calc(var(--score, 0) * 1%), var(--line) 0),
+      var(--panel);
+  }
+
+  .score-inner {
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #131519;
+    font: 500 18px var(--mono);
+  }
+
+  .score-title {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .score-list {
+    display: grid;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .check::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--line-strong);
+    flex: 0 0 auto;
+  }
+
+  .check.done { color: var(--text); }
+  .check.done::before { background: var(--green); }
+
+  .preview-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .preview-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .copy-status {
+    margin-left: auto;
+    color: var(--green);
+    font-size: 11px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .copy-status.show { opacity: 1; }
+
+  .prompt-output {
+    flex: 1;
+    width: 100%;
+    padding: 18px 20px 24px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--text);
+    font: 13px/1.75 var(--sans);
+    resize: none;
+  }
+
+  .footer-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--line);
+    color: var(--dim);
+    font-size: 11px;
+  }
+
+  .footer-strip code {
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  @media (max-width: 1120px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+
+    .builder {
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .preview {
+      position: static;
+      height: auto;
+      min-height: 560px;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .app-header {
+      align-items: flex-start;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    .header-actions {
+      width: 100%;
+      margin-left: 0;
+      justify-content: stretch;
+    }
+
+    .btn { flex: 1; }
+
+    .builder { padding: 14px; }
+
+    .section-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .field-head {
+      grid-template-columns: 26px minmax(0, 1fr);
+    }
+
+    .badge { display: none; }
+
+    .output-options {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="title-block">
+      <h1 class="title">プロンプト設計ボード</h1>
+      <p class="subtitle">目的、背景、制約、判断基準をそろえて、AIが実行しやすい依頼文に整えます。</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="sampleBtn" type="button">例を入れる</button>
+      <button class="btn warn" id="clearBtn" type="button">クリア</button>
+      <button class="btn primary" id="copyBtn" type="button">コピー</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="builder" aria-label="プロンプト入力">
+      <div class="section-grid" id="fields"></div>
+    </section>
+
+    <aside class="preview" aria-label="生成されたプロンプト">
+      <section class="score-panel">
+        <div class="score-ring" id="scoreRing">
+          <div class="score-inner"><span id="scoreText">0</span></div>
+        </div>
+        <div>
+          <div class="score-title">完成度</div>
+          <div class="score-list" id="scoreList"></div>
+        </div>
+      </section>
+
+      <div class="preview-head">
+        <div class="preview-title">生成プロンプト</div>
+        <div class="copy-status" id="copyStatus">コピーしました</div>
+      </div>
+      <textarea class="prompt-output" id="promptOutput" readonly></textarea>
+      <div class="footer-strip">
+        <span>保存先</span>
+        <code>localStorage</code>
+      </div>
+    </aside>
+  </main>
+
+<script>
+  const fieldDefinitions = [
+    {
+      id: 'purpose',
+      title: '目的',
+      note: '何を達成したいのか',
+      required: true,
+      placeholder: '例: 会議前に論点を整理し、参加者が判断しやすい資料を作る'
+    },
+    {
+      id: 'background',
+      title: '背景',
+      note: 'なぜそれが必要なのか',
+      required: true,
+      placeholder: '例: 関係者の前提理解に差があり、議論が発散しやすい'
+    },
+    {
+      id: 'target',
+      title: '対象',
+      note: '扱う情報、資料、画面、業務、データ',
+      required: true,
+      placeholder: '例: 議事メモ、前回の決定事項、現状の課題一覧'
+    },
+    {
+      id: 'current',
+      title: '現状',
+      note: '今どうなっているのか',
+      required: false,
+      placeholder: '例: 目的は共有済みだが、選択肢と判断軸が未整理'
+    },
+    {
+      id: 'expected',
+      title: '期待状態',
+      note: '最終的にどうなってほしいのか',
+      required: true,
+      placeholder: '例: 30分会議で決めるべき論点、選択肢、推奨案が明確になる'
+    },
+    {
+      id: 'constraints',
+      title: '制約',
+      note: '使ってよい/悪い手段、トーン、範囲、前提',
+      required: false,
+      placeholder: '例: 追加調査はしない。専門用語は避ける。A4 1枚以内。'
+    },
+    {
+      id: 'criteria',
+      title: '判断基準',
+      note: '迷ったときに何を優先するか',
+      required: true,
+      placeholder: '例: 正確性を最優先し、次に意思決定の速さ、最後に網羅性'
+    },
+    {
+      id: 'format',
+      title: '出力形式',
+      note: '箇条書き、表、提案書、コード、チェックリストなど',
+      required: true,
+      placeholder: '例: 見出し付きの箇条書き。最後に確認事項を3つ。'
+    },
+    {
+      id: 'done',
+      title: '完了条件',
+      note: '何を満たせば完了か',
+      required: true,
+      placeholder: '例: 会議で決める論点、推奨案、未確認事項が分かれている'
+    },
+    {
+      id: 'escalation',
+      title: 'エスカレーション条件',
+      note: 'どこから先は確認してほしいか',
+      required: false,
+      placeholder: '例: 前提が不足している場合は作業前に質問する。推測で補わない。'
+    }
+  ];
+
+  const stateKey = 'prompt-builder-state-v1';
+  const fieldsEl = document.getElementById('fields');
+  const promptOutput = document.getElementById('promptOutput');
+  const scoreRing = document.getElementById('scoreRing');
+  const scoreText = document.getElementById('scoreText');
+  const scoreList = document.getElementById('scoreList');
+  const copyStatus = document.getElementById('copyStatus');
+
+  function loadState() {
+    try {
+      return JSON.parse(localStorage.getItem(stateKey)) || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveState() {
+    const data = {};
+    fieldDefinitions.forEach((field) => {
+      data[field.id] = document.getElementById(field.id).value.trim();
+    });
+    data.outputMode = document.querySelector('input[name="outputMode"]:checked').value;
+    localStorage.setItem(stateKey, JSON.stringify(data));
+  }
+
+  function createField(field, index, savedValue) {
+    const card = document.createElement('article');
+    card.className = `field-card ${field.required ? 'priority' : ''} ${field.id === 'format' ? 'output' : ''}`;
+    card.innerHTML = `
+      <div class="field-head">
+        <div class="num">${String(index + 1).padStart(2, '0')}</div>
+        <div>
+          <div class="field-title">${field.title}</div>
+          <div class="field-note">${field.note}</div>
+        </div>
+        <div class="badge">${field.required ? 'required' : 'optional'}</div>
+      </div>
+    `;
+
+    if (field.id === 'format') {
+      const options = document.createElement('div');
+      options.className = 'output-options';
+      options.innerHTML = `
+        <label class="option"><input type="radio" name="outputMode" value="箇条書き" checked><span>箇条書き</span></label>
+        <label class="option"><input type="radio" name="outputMode" value="表"><span>表</span></label>
+        <label class="option"><input type="radio" name="outputMode" value="提案書"><span>提案書</span></label>
+      `;
+      card.appendChild(options);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.id = field.id;
+    textarea.placeholder = field.placeholder;
+    textarea.value = savedValue || '';
+    textarea.addEventListener('input', update);
+    card.appendChild(textarea);
+
+    if (!field.required) {
+      card.classList.add('compact');
+    }
+
+    return card;
+  }
+
+  function renderFields() {
+    const saved = loadState();
+    fieldDefinitions.forEach((field, index) => {
+      fieldsEl.appendChild(createField(field, index, saved[field.id]));
+    });
+
+    if (saved.outputMode) {
+      const selected = document.querySelector(`input[name="outputMode"][value="${saved.outputMode}"]`);
+      if (selected) selected.checked = true;
+    }
+
+    document.querySelectorAll('input[name="outputMode"]').forEach((input) => {
+      input.addEventListener('change', update);
+    });
+  }
+
+  function getValue(id) {
+    return document.getElementById(id).value.trim();
+  }
+
+  function buildPrompt() {
+    const outputMode = document.querySelector('input[name="outputMode"]:checked').value;
+    const lines = [
+      '# 依頼',
+      getValue('purpose') || 'ここに目的を書く',
+      '',
+      '## 背景',
+      getValue('background') || 'ここに背景を書く',
+      '',
+      '## 対象',
+      getValue('target') || 'ここに対象を書く',
+      '',
+      '## 現状',
+      getValue('current') || '未記入',
+      '',
+      '## 期待状態',
+      getValue('expected') || 'ここに期待状態を書く',
+      '',
+      '## 制約',
+      getValue('constraints') || '未記入',
+      '',
+      '## 判断基準',
+      getValue('criteria') || 'ここに判断基準を書く',
+      '',
+      '## 出力形式',
+      `${getValue('format') || 'ここに出力形式を書く'}\n形式の目安: ${outputMode}`,
+      '',
+      '## 完了条件',
+      getValue('done') || 'ここに完了条件を書く',
+      '',
+      '## エスカレーション条件',
+      getValue('escalation') || '前提が不足している場合は、作業前に確認してください。'
+    ];
+
+    return lines.join('\n');
+  }
+
+  function updateScore() {
+    const required = fieldDefinitions.filter((field) => field.required);
+    const completedRequired = required.filter((field) => getValue(field.id)).length;
+    const completedAll = fieldDefinitions.filter((field) => getValue(field.id)).length;
+    const requiredScore = completedRequired / required.length * 78;
+    const optionalScore = completedAll / fieldDefinitions.length * 22;
+    const score = Math.round(requiredScore + optionalScore);
+
+    scoreRing.style.setProperty('--score', score);
+    scoreText.textContent = score;
+
+    const checks = [
+      ['目的と期待状態がある', getValue('purpose') && getValue('expected')],
+      ['対象と現状が分かる', getValue('target') && getValue('current')],
+      ['制約と判断基準がある', getValue('constraints') && getValue('criteria')],
+      ['出力形式と完了条件がある', getValue('format') && getValue('done')],
+      ['確認が必要な境界がある', getValue('escalation')]
+    ];
+
+    scoreList.innerHTML = checks.map(([label, done]) => (
+      `<div class="check ${done ? 'done' : ''}">${label}</div>`
+    )).join('');
+  }
+
+  function update() {
+    promptOutput.value = buildPrompt();
+    updateScore();
+    saveState();
+  }
+
+  function fillSample() {
+    const sample = {
+      purpose: '会議前に論点を整理し、参加者が30分で意思決定できる状態を作る',
+      background: '前回会議では前提説明に時間がかかり、選択肢の比較まで進まなかった',
+      target: '前回議事メモ、決定済み事項、未決論点、関係者から集めた懸念点',
+      current: '目的は共有済み。選択肢は3つあるが、判断軸と推奨案が未整理',
+      expected: '論点、選択肢、比較表、推奨案、当日確認する質問が分かれている',
+      constraints: '新規調査はしない。専門用語は避ける。A4 1枚相当でまとめる',
+      criteria: '正確性を最優先し、次に意思決定のしやすさ、最後に網羅性を優先する',
+      format: '見出し付きの箇条書き。必要な比較だけ表にする',
+      done: '会議で決めること、決めないこと、事前確認が必要なことが明確になっている',
+      escalation: '前提情報が不足して推奨案を選べない場合は、作業前に質問する'
+    };
+
+    Object.entries(sample).forEach(([id, value]) => {
+      document.getElementById(id).value = value;
+    });
+    update();
+  }
+
+  async function copyPrompt() {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(promptOutput.value);
+    } else {
+      promptOutput.focus();
+      promptOutput.select();
+      document.execCommand('copy');
+      promptOutput.setSelectionRange(0, 0);
+    }
+    copyStatus.classList.add('show');
+    window.setTimeout(() => copyStatus.classList.remove('show'), 1600);
+  }
+
+  function clearAll() {
+    fieldDefinitions.forEach((field) => {
+      document.getElementById(field.id).value = '';
+    });
+    localStorage.removeItem(stateKey);
+    update();
+  }
+
+  document.getElementById('sampleBtn').addEventListener('click', fillSample);
+  document.getElementById('copyBtn').addEventListener('click', copyPrompt);
+  document.getElementById('clearBtn').addEventListener('click', clearAll);
+
+  renderFields();
+  update();
+</script>
+</body>
+</html>
